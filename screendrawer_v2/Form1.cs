@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows;
+using System.Runtime.InteropServices;
 
 namespace screendrawer_v2
 {
@@ -20,6 +20,53 @@ namespace screendrawer_v2
         private int currentSize;
         private bool isDragging = false;
         private Point offset;
+        private Point startPosition;
+        private Point endPosition;
+        int screenLeft = SystemInformation.VirtualScreen.Left;
+        int screenTop = SystemInformation.VirtualScreen.Top;
+        int screenWidth = SystemInformation.VirtualScreen.Width;
+        int screenHeight = SystemInformation.VirtualScreen.Height;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DEVMODE
+        {
+            private const int CCHDEVICENAME = 0x20;
+            private const int CCHFORMNAME = 0x20;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 0x20)]
+            public string dmDeviceName;
+            public short dmSpecVersion;
+            public short dmDriverVersion;
+            public short dmSize;
+            public short dmDriverExtra;
+            public int dmFields;
+            public int dmPositionX;
+            public int dmPositionY;
+            public ScreenOrientation dmDisplayOrientation;
+            public int dmDisplayFixedOutput;
+            public short dmColor;
+            public short dmDuplex;
+            public short dmYResolution;
+            public short dmTTOption;
+            public short dmCollate;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 0x20)]
+            public string dmFormName;
+            public short dmLogPixels;
+            public int dmBitsPerPel;
+            public int dmPelsWidth;
+            public int dmPelsHeight;
+            public int dmDisplayFlags;
+            public int dmDisplayFrequency;
+            public int dmICMMethod;
+            public int dmICMIntent;
+            public int dmMediaType;
+            public int dmDitherType;
+            public int dmReserved1;
+            public int dmReserved2;
+            public int dmPanningWidth;
+            public int dmPanningHeight;
+        }
+        [DllImport("user32.dll")]
+        public static extern bool EnumDisplaySettings(string lpszDeviceName, int iModeNum, ref DEVMODE lpDevMode);
 
         public Form1()
         {
@@ -48,7 +95,7 @@ namespace screendrawer_v2
             colorPreview.BackColor = Color.FromArgb(trackBarGreen.Value, currentPen.Color.G, currentPen.Color.B);
             this.WindowState = FormWindowState.Maximized;
 
-            Button[] buttons = { penButton1, penButton2, penButton, eraserButton, clearButton, minimizeButton, maximizeButton, closeButton };
+            Button[] buttons = { penButton1, penButton2, penButton, eraserButton, saveButton, clearButton, minimizeButton, maximizeButton, closeButton };
             foreach (Button button in buttons)
             {
                 Image resizedImage = ResizeImage(button.Image, 25, 25);
@@ -117,7 +164,6 @@ namespace screendrawer_v2
             }
         }
 
-
         private List<Line> lines = new List<Line>();
 
         public class Line
@@ -140,6 +186,7 @@ namespace screendrawer_v2
         {
             isDrawing = true;
             previousPoint = e.Location;
+            startPosition = e.Location;
         }
 
         private void canvas_MouseMove(object sender, MouseEventArgs e)
@@ -156,7 +203,6 @@ namespace screendrawer_v2
                     {
                         smoothPen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
                         smoothPen.StartCap = smoothPen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
-
                         g.DrawLine(smoothPen, previousPoint, e.Location);
                     }
                     lines.Add(new Line(previousPoint, e.Location, currentPen.Color, currentPen.Width));
@@ -174,23 +220,25 @@ namespace screendrawer_v2
                 using (Graphics g = canvas.CreateGraphics())
                 {
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
-
                     using (Brush brush = new SolidBrush(currentPen.Color))
                     {
                         int x = e.X - halfWidth;
                         int y = e.Y - halfWidth;
                         g.FillEllipse(brush, x, y, currentPen.Width, currentPen.Width);
                     }
-
-                    lines.Add(new Line(new Point(e.X, e.Y), new Point(e.X, e.Y), currentPen.Color, currentPen.Width));
+                    Point startPoint1 = e.Location;
+                    startPoint1.Offset(-1, 0);
+                    lines.Add(new Line(startPoint1, e.Location, currentPen.Color, currentPen.Width));
                 }
             }
         }
 
         private void RedrawLines()
         {
-            Graphics g = canvas.CreateGraphics();
+            using (Graphics g = canvas.CreateGraphics())
+            {
             g.SmoothingMode = SmoothingMode.None;
+
             foreach (var line in lines)
             {
                 using (Pen p = new Pen(line.PenColor, line.PenWidth))
@@ -201,20 +249,25 @@ namespace screendrawer_v2
                 }
             }
         }
+        }
+
 
         private void canvas_MouseUp(object sender, MouseEventArgs e)
         {
             isDrawing = false;
+            endPosition = e.Location;
         }
 
         private void penButton1_Click(object sender, EventArgs e)
         {
             currentPen.Color = Color.FromArgb(255, 255, 255, 255);
+            currentPen.Width = 5;
         }
 
         private void penButton2_Click(object sender, EventArgs e)
         {
             currentPen.Color = Color.FromArgb(255, 0, 0, 0);
+            currentPen.Width = 5;
         }
 
         private void minimizeButton_Click(object sender, EventArgs e)
@@ -241,6 +294,7 @@ namespace screendrawer_v2
         {
             currentSize = sizeTrackBar.Value;
             currentPen.Width = currentSize;
+            numericUpDown1.Value = (decimal)currentPen.Width;
         }
 
         private void trackBar3_Scroll(object sender, EventArgs e)
@@ -315,18 +369,65 @@ namespace screendrawer_v2
         private void penButton_Click(object sender, EventArgs e)
         {
             currentPen.Color = Color.FromArgb(trackBarRed.Value, trackBarGreen.Value, trackBarBlue.Value);
+            currentPen.Width = sizeTrackBar.Value;
         }
 
         private void eraserButton_Click(object sender, EventArgs e)
         {
             currentPen.Color = Color.FromArgb(255, 255, 255, 254);
-
         }
 
         private void clearButton_Click(object sender, EventArgs e)
         {
             canvas.Refresh();
             lines.Clear();
+        }
+
+        private void saveButton_Click(object sender, EventArgs e)
+        {
+            Screen currentScreen = Screen.FromHandle(this.Handle);
+            DEVMODE dm = new DEVMODE();
+            dm.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+            EnumDisplaySettings(currentScreen.DeviceName, -1, ref dm);
+
+            var scalingFactor = Math.Round(Decimal.Divide(dm.dmPelsWidth, currentScreen.Bounds.Width), 2);
+            Console.WriteLine("Current Screen Scaling Factor: " + scalingFactor);
+            Screen activeScreen = Screen.FromHandle(this.Handle);
+
+            Bitmap screenshot = new Bitmap((int)(activeScreen.Bounds.Width * scalingFactor),
+                (int)(activeScreen.Bounds.Height * scalingFactor),
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            using (Graphics gfxScreenshot = Graphics.FromImage(screenshot))
+            {
+                gfxScreenshot.CopyFromScreen(
+                    (int)(activeScreen.Bounds.X * scalingFactor),
+                    (int)(activeScreen.Bounds.Y * scalingFactor),
+                    0,
+                    0,
+                    new Size((int)(activeScreen.Bounds.Width * scalingFactor), (int)(activeScreen.Bounds.Height * scalingFactor)),
+                    CopyPixelOperation.SourceCopy);
+    }
+
+            using (SaveFileDialog saveDialog = new SaveFileDialog())
+            {
+                saveDialog.Filter = "PNG Image|*.png";
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    screenshot.Save(saveDialog.FileName, ImageFormat.Png);
+                }
+            }
+        }
+
+        private void canvas_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        {
+            currentPen.Width = (float)numericUpDown1.Value;
+            sizeTrackBar.Value = (int)currentPen.Width;
         }
     }
 }
