@@ -368,8 +368,8 @@ namespace screendrawer_v2
 
         private void penButton_Click(object sender, EventArgs e)
         {
-            currentPen.Color = Color.FromArgb(trackBarRed.Value, trackBarGreen.Value, trackBarBlue.Value);
-            currentPen.Width = sizeTrackBar.Value;
+            currentPen.Color = colorDialog.Color;
+            currentPen.Width = (float)numericUpDown1.Value;
         }
 
         private void eraserButton_Click(object sender, EventArgs e)
@@ -424,7 +424,50 @@ namespace screendrawer_v2
 
         }
 
-        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        private void color_selecter_Click(object sender, EventArgs e)
+        {
+            if (colorDialog.ShowDialog() == DialogResult.OK)
+            {
+                Color selectedColor = colorDialog.Color;
+                currentPen.Color = selectedColor;
+            }
+
+            currentPen.Color = colorDialog.Color;
+
+            Image buttonImage = penButton.Image;
+            Bitmap originalImage = new Bitmap(buttonImage);
+            Bitmap modifiedImage = new Bitmap(originalImage.Width, originalImage.Height);
+            for (int x = 0; x < originalImage.Width; x++)
+            {
+                for (int y = 0; y < originalImage.Height; y++)
+                {
+                    Color pixelColor = originalImage.GetPixel(x, y);
+                    int red = currentPen.Color.R;
+                    int green = currentPen.Color.G;
+                    int blue = currentPen.Color.B;
+                    Color newColor = Color.FromArgb(pixelColor.A, red, green, blue);
+                    modifiedImage.SetPixel(x, y, newColor);
+                }
+            }
+            penButton.Image = modifiedImage;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            currentPen.Width = 2;
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            currentPen.Width = 4;
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            currentPen.Width = 6;
+        }
+
+        private void label1_Click(object sender, EventArgs e)
         {
             currentPen.Width = (float)numericUpDown1.Value;
             sizeTrackBar.Value = (int)currentPen.Width;
