@@ -26,6 +26,7 @@ namespace screendrawer_v2
         int screenTop = SystemInformation.VirtualScreen.Top;
         int screenWidth = SystemInformation.VirtualScreen.Width;
         int screenHeight = SystemInformation.VirtualScreen.Height;
+        private ColorDialog colorDialog = new ColorDialog();
 
         [StructLayout(LayoutKind.Sequential)]
         public struct DEVMODE
@@ -92,10 +93,10 @@ namespace screendrawer_v2
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            colorPreview.BackColor = Color.FromArgb(trackBarGreen.Value, currentPen.Color.G, currentPen.Color.B);
+            //colorPreview.BackColor = Color.FromArgb(trackBarGreen.Value, currentPen.Color.G, currentPen.Color.B);
             this.WindowState = FormWindowState.Maximized;
 
-            Button[] buttons = { penButton1, penButton2, penButton, eraserButton, saveButton, clearButton, minimizeButton, maximizeButton, closeButton };
+            Button[] buttons = { penButton1, penButton2, penButton, eraserButton, saveButton, clearButton, minimizeButton, maximizeButton, closeButton, color_selecter };
             foreach (Button button in buttons)
             {
                 Image resizedImage = ResizeImage(button.Image, 25, 25);
@@ -237,18 +238,18 @@ namespace screendrawer_v2
         {
             using (Graphics g = canvas.CreateGraphics())
             {
-            g.SmoothingMode = SmoothingMode.None;
+                g.SmoothingMode = SmoothingMode.None;
 
-            foreach (var line in lines)
-            {
-                using (Pen p = new Pen(line.PenColor, line.PenWidth))
+                foreach (var line in lines)
                 {
-                    p.LineJoin = LineJoin.Round;
-                    p.StartCap = p.EndCap = LineCap.Round;
-                    g.DrawLine(p, line.StartPoint, line.EndPoint);
+                    using (Pen p = new Pen(line.PenColor, line.PenWidth))
+                    {
+                        p.LineJoin = LineJoin.Round;
+                        p.StartCap = p.EndCap = LineCap.Round;
+                        g.DrawLine(p, line.StartPoint, line.EndPoint);
+                    }
                 }
             }
-        }
         }
 
 
@@ -273,8 +274,6 @@ namespace screendrawer_v2
         private void minimizeButton_Click(object sender, EventArgs e)
         {
             WindowState = FormWindowState.Minimized;
-
-
         }
 
         private void maximizeButton_Click(object sender, EventArgs e)
@@ -290,80 +289,9 @@ namespace screendrawer_v2
             Close();
         }
 
-        private void sizeTrackBar_Scroll(object sender, EventArgs e)
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
-            currentSize = sizeTrackBar.Value;
-            currentPen.Width = currentSize;
-            numericUpDown1.Value = (decimal)currentPen.Width;
-        }
-
-        private void trackBar3_Scroll(object sender, EventArgs e)
-        {
-            currentPen.Color = Color.FromArgb(trackBarRed.Value, trackBarGreen.Value, trackBarBlue.Value);
-            colorPreview.BackColor = currentPen.Color;
-
-            Image buttonImage = penButton.Image;
-            Bitmap originalImage = new Bitmap(buttonImage);
-            Bitmap modifiedImage = new Bitmap(originalImage.Width, originalImage.Height);
-            for (int x = 0; x < originalImage.Width; x++)
-            {
-                for (int y = 0; y < originalImage.Height; y++)
-                {
-                    Color pixelColor = originalImage.GetPixel(x, y);
-                    int red = currentPen.Color.R;
-                    int green = currentPen.Color.G;
-                    int blue = currentPen.Color.B;
-                    Color newColor = Color.FromArgb(pixelColor.A, red, green, blue);
-                    modifiedImage.SetPixel(x, y, newColor);
-                }
-            }
-            penButton.Image = modifiedImage;
-        }
-
-        private void trackBar2_Scroll(object sender, EventArgs e)
-        {
-            currentPen.Color = Color.FromArgb(trackBarRed.Value, trackBarGreen.Value, trackBarBlue.Value);
-            colorPreview.BackColor = currentPen.Color;
-
-            Image buttonImage = penButton.Image;
-            Bitmap originalImage = new Bitmap(buttonImage);
-            Bitmap modifiedImage = new Bitmap(originalImage.Width, originalImage.Height);
-            for (int x = 0; x < originalImage.Width; x++)
-            {
-                for (int y = 0; y < originalImage.Height; y++)
-                {
-                    Color pixelColor = originalImage.GetPixel(x, y);
-                    int red = currentPen.Color.R;
-                    int green = currentPen.Color.G;
-                    int blue = currentPen.Color.B;
-                    Color newColor = Color.FromArgb(pixelColor.A, red, green, blue);
-                    modifiedImage.SetPixel(x, y, newColor);
-                }
-            }
-            penButton.Image = modifiedImage;
-        }
-
-        private void trackBar1_Scroll(object sender, EventArgs e)
-        {
-            currentPen.Color = Color.FromArgb(trackBarRed.Value, trackBarGreen.Value, trackBarBlue.Value);
-            colorPreview.BackColor = currentPen.Color;
-
-            Image buttonImage = penButton.Image;
-            Bitmap originalImage = new Bitmap(buttonImage);
-            Bitmap modifiedImage = new Bitmap(originalImage.Width, originalImage.Height);
-            for (int x = 0; x < originalImage.Width; x++)
-            {
-                for (int y = 0; y < originalImage.Height; y++)
-                {
-                    Color pixelColor = originalImage.GetPixel(x, y);
-                    int red = currentPen.Color.R;
-                    int green = currentPen.Color.G;
-                    int blue = currentPen.Color.B;
-                    Color newColor = Color.FromArgb(pixelColor.A, red, green, blue);
-                    modifiedImage.SetPixel(x, y, newColor);
-                }
-            }
-            penButton.Image = modifiedImage;
+            currentPen.Width = (float)numericUpDown1.Value;
         }
 
         private void penButton_Click(object sender, EventArgs e)
@@ -407,7 +335,7 @@ namespace screendrawer_v2
                     0,
                     new Size((int)(activeScreen.Bounds.Width * scalingFactor), (int)(activeScreen.Bounds.Height * scalingFactor)),
                     CopyPixelOperation.SourceCopy);
-    }
+            }
 
             using (SaveFileDialog saveDialog = new SaveFileDialog())
             {
@@ -469,8 +397,7 @@ namespace screendrawer_v2
 
         private void label1_Click(object sender, EventArgs e)
         {
-            currentPen.Width = (float)numericUpDown1.Value;
-            sizeTrackBar.Value = (int)currentPen.Width;
+
         }
     }
 }
